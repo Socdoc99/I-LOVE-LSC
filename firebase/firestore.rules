@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Reglas de seguridad de Cloud Firestore para I Love LSC (prototipo 1.0.1).
+// Pégalas en: Firebase Console -> Firestore Database -> Reglas -> Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // El rol "admin" se asigna a mano desde la consola de Firebase
+    // (users/{uid}.role = "admin"). Nunca desde la app.
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---------------------------------------------------------- Perfiles
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Una persona solo puede crear su propio perfil como aprendiz y
+      // debe haber aceptado la política de datos (Ley 1581 de 2012).
+      allow create: if isOwner(uid)
+        && request.resource.data.role == 'aprendiz'
+        && request.resource.data.acceptedDataPolicy == true;
+
+      // No puede cambiar su propio rol.
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if isOwner(uid);
+    }
+
+    // ---------------------------------------------------------- Contenido
+    match /units/{unitId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /signs/{signId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Las personas aprendices solo ven lecciones publicadas. Una lección
+    // solo puede publicarse si fue validada por personas sordas.
+    match /lessons/{lessonId} {
+      allow read: if signedIn() && (resource.data.published == true || isAdmin());
+      allow create, update: if isAdmin()
+        && (request.resource.data.published != true
+            || request.resource.data.validated == true);
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------- Progreso
+    match /progress/{uid} {
+      allow read, write: if isOwner(uid);
+      allow read: if isAdmin();
+    }
+
+    // ----------------------------------------------- Encuestas del piloto
+    match /encuestas/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // --------------------------------------- Solicitudes de colaboradores
+    match /solicitudesColaborador/{id} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pendiente';
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+  }
+}

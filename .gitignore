@@ -1,0 +1,41 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.iml
+.idea/
+.DS_Store
+
+# Android / iOS locales
+android/local.properties
+android/key.properties
+android/.gradle/
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+*.jks
+*.keystore
+
+# Llaves y datos que NO deben estar en un repositorio público
+firebase.json
+.firebaserc
+serviceAccount*.json
+*-adminsdk-*.json
+.env
+.env.*
+
+# Videos y material audiovisual (se suben a Cloud Storage, no al repositorio)
+videos/
+*.mp4
+*.mov
+*.mkv
+
+# Node (script de carga de contenido)
+node_modules/
+
+# Configuración local de herramientas
+.claude/settings.local.json
